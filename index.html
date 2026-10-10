@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CYBER_GRID // 2099 - Neural Tic-Tac-Toe</title>
+  
+  <!-- 
+    ==========================================================================
+    EXTERNAL TYPOGRAPHY & ASSETS
+    - Orbitron: Heavy angular geometric headers for high-tech cyberpunk titles
+    - Rajdhani: Condensed squared HUD font for stats and tactical indicators
+    - Share Tech Mono: Monospaced terminal font for mainframe system logs
+    - FontAwesome 6: Vector icons for system controls and telemetry icons
+    ==========================================================================
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Tailwind CSS CDN Engine -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    /**
+     * Tailwind Configuration Object
+     * Defines custom cybernetic design tokens, neon color gamuts,
+     * and futuristic font families across the entire UI.
+     */
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cyber: {
+              black: '#030712',      // Deep void black base background
+              dark: '#080d1a',       // Slate matrix card backdrop
+              card: 'rgba(9, 18, 38, 0.75)', // Glassmorphic cyber container fill
+              cyan: '#00f3ff',       // Primary laser blue/cyan accent (Player X)
+              cyanGlow: 'rgba(0, 243, 255, 0.45)',
+              pink: '#ff007f',       // Hot synthwave magenta accent (Player O / AI)
+              pinkGlow: 'rgba(255, 0, 127, 0.45)',
+              yellow: '#fcee0a',     // Warning / Critical power indicator yellow
+              purple: '#9d00ff',     // Secondary cyber neon purple
+              border: '#14284d'      // Subtle grid containment boundary
+            }
+          },
+          fontFamily: {
+            display: ['Orbitron', 'sans-serif'],
+            hud: ['Rajdhani', 'sans-serif'],
+            mono: ['Share Tech Mono', 'monospace'],
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* 
+      Root Design Variables:
+      Provides centralized CSS custom variables for neon glows,
+      laser strike reflections, and dynamic Overclock color shifts.
+    */
+    :root {
+      --neon-cyan: #00f3ff;
+      --neon-pink: #ff007f;
+      --neon-yellow: #fcee0a;
+      --neon-purple: #a855f7;
+      --bg-dark: #030712;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: #e2e8f0;
+      overflow-x: hidden;
+      font-family: 'Rajdhani', sans-serif;
+    }
+
+    /* 
+      CRT Scanline Simulation:
+      Dual-gradient overlay creating horizontal phosphor scan lines (3px pattern)
+      and subtle chromatic aberration sub-pixel bars (RGB striping).
+    */
+    .crt-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.28) 50%), 
+                  linear-gradient(90deg, rgba(255, 0, 0, 0.04), rgba(0, 255, 0, 0.015), rgba(0, 0, 255, 0.04));
+      background-size: 100% 3px, 6px 100%;
+      pointer-events: none;
+      z-index: 99;
+      opacity: 0.85;
+      transition: opacity 0.3s ease;
+    }
+
+    /* Radial CRT Vignette: Darkens outer perimeter to simulate curved monitor bezel */
+    .crt-vignette {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: radial-gradient(circle at center, transparent 65%, rgba(0,0,0,0.85) 100%);
+      pointer-events: none;
+      z-index: 98;
+    }
+
+    /* 
+      Cybernetic Angled Polygon Clip Paths:
+      Emulates chamfered corner cuts found on futuristic physical hardware and HUD panels.
+    */
+    .cyber-clip-corner {
+      clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+    }
+    .cyber-clip-btn {
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+    }
+    .cyber-clip-tag {
+      clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+    }
+
+    /* High-Intensity Box-Shadow Neon Blooms */
+    .glow-cyan {
+      box-shadow: 0 0 18px -2px rgba(0, 243, 255, 0.5), inset 0 0 12px rgba(0, 243, 255, 0.2);
+    }
+    .glow-pink {
+      box-shadow: 0 0 18px -2px rgba(255, 0, 127, 0.5), inset 0 0 12px rgba(255, 0, 127, 0.2);
+    }
+    .glow-yellow {
+      box-shadow: 0 0 18px -2px rgba(252, 238, 10, 0.5);
+    }
+
+    /* Multi-layered Text Drop Shadows for Holographic Depth */
+    .text-glow-cyan {
+      text-shadow: 0 0 8px rgba(0, 243, 255, 0.8), 0 0 20px rgba(0, 243, 255, 0.4);
+    }
+    .text-glow-pink {
+      text-shadow: 0 0 8px rgba(255, 0, 127, 0.8), 0 0 20px rgba(255, 0, 127, 0.4);
+    }
+    .text-glow-yellow {
+      text-shadow: 0 0 8px rgba(252, 238, 10, 0.8), 0 0 18px rgba(252, 238, 10, 0.4);
+    }
+
+    /* 
+      Overclock Mode Active Overrides:
+      Pumps overall color saturation, matrix particle brightness, and dynamic bloom.
+    */
+    body.overclocked {
+      filter: saturate(1.4) contrast(1.15);
+    }
+    body.overclocked .grid-cell {
+      box-shadow: 0 0 22px rgba(0, 243, 255, 0.3);
+    }
+    body.overclocked #bgCanvas {
+      filter: brightness(1.35) blur(0.2px);
+    }
+
+    /* Glitch Keyframe Sequence: Simulates micro-signal interference on victory display */
+    @keyframes glitchText {
+      0% { transform: translate(0); text-shadow: 0 0 8px #00f3ff; }
+      20% { transform: translate(-2px, 2px); text-shadow: 2px -2px #ff007f, -2px 2px #00f3ff; }
+      40% { transform: translate(-1px, -1px); text-shadow: -2px 0 #ff007f; }
+      60% { transform: translate(2px, 0); text-shadow: 2px 2px #00f3ff; }
+      80% { transform: translate(1px, -2px); text-shadow: -1px 2px #fcee0a; }
+      100% { transform: translate(0); text-shadow: 0 0 8px #00f3ff; }
+    }
+    .glitch-active {
+      animation: glitchText 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) infinite;
+    }
+
+    /* Custom Terminal Scrollbar */
+    ::-webkit-scrollbar {
+      width: 5px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(8, 13, 26, 0.8);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #00f3ff;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen relative flex flex-col justify-between selection:bg-cyan-500 selection:text-black">
+
+  <!-- CRT Phosphor Raster & Radial Vignette elements -->
+  <div id="crtOverlay" class="crt-overlay"></div>
+  <div class="crt-vignette"></div>
+
+  <!-- Background Canvas: Hosts perspective grid & floating quantum data particle physics -->
+  <canvas id="bgCanvas" class="fixed inset-0 w-full h-full pointer-events-none z-0"></canvas>
+
+  <!-- Top Navigation & System Telemetry HUD Bar -->
+  <header class="relative z-20 border-b border-cyber-border bg-cyber-dark/80 backdrop-blur-md px-4 sm:px-8 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      
+      <!-- Brand Logo, Title, and System Security Level Indicator -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 border border-cyber-cyan bg-cyber-cyan/10 flex items-center justify-center cyber-clip-btn glow-cyan">
+          <i class="fa-solid fa-microchip text-cyber-cyan text-lg animate-pulse"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-display font-black tracking-wider text-xl sm:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-cyber-cyan via-white to-cyber-pink">
+              CYBER_GRID
+            </h1>
+            <span class="text-[10px] font-mono px-2 py-0.5 border border-cyber-yellow text-cyber-yellow bg-cyber-yellow/10 tracking-widest cyber-clip-tag font-bold">
+              v2.99
+            </span>
+          </div>
+          <p class="text-[11px] font-mono text-slate-400 tracking-wider">SEC_LEVEL: 0 // QUANTUM TIC-TAC-TOE</p>
+        </div>
+      </div>
+
+      <!-- Tactical HUD Control Switches (Overclock, CRT filter, Sound engine) -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        
+        <!-- Overclock Mode Trigger -->
+        <button id="overclockToggle" title="Toggle Overclock Mode" class="px-3 py-1.5 rounded text-xs font-mono font-bold tracking-wider uppercase border border-slate-700 bg-slate-900/80 text-slate-400 hover:text-cyber-yellow hover:border-cyber-yellow transition flex items-center gap-1.5 cyber-clip-btn">
+          <i class="fa-solid fa-bolt-lightning text-cyber-yellow"></i>
+          <span class="hidden sm:inline">OVERCLOCK:</span>
+          <span id="overclockStatus" class="text-cyber-yellow">OFF</span>
+        </button>
+
+        <!-- CRT Scanline Shader Toggle -->
+        <button id="scanlineToggle" title="Toggle CRT Screen Scanlines" class="p-2 w-9 h-9 border border-slate-700 bg-slate-900/80 text-cyber-cyan rounded flex items-center justify-center hover:border-cyber-cyan transition cyber-clip-btn">
+          <i class="fa-solid fa-tv text-xs"></i>
+        </button>
+
+        <!-- Synthesized Audio Engine Toggle -->
+        <button id="audioToggle" title="Toggle Sound Engine" class="p-2 w-9 h-9 border border-cyber-cyan bg-cyber-cyan/10 text-cyber-cyan rounded flex items-center justify-center hover:glow-cyan transition cyber-clip-btn">
+          <i id="audioIcon" class="fa-solid fa-volume-high text-xs"></i>
+        </button>
+
+      </div>
+    </div>
+  </header>
+
+  <main class="relative z-10 max-w-7xl mx-auto w-full px-3 sm:px-6 py-4 sm:py-6 flex-grow flex flex-col items-center justify-center">
+
+    <div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      
+      <!-- LEFT COLUMN: Neural Configuration & Game Mode Protocol Selectors -->
+      <aside class="lg:col-span-3 space-y-4 w-full order-2 lg:order-1">
+        
+        <!-- Game Mode Selection Panel (PvAI Protocol vs 2P Local Netrunner) -->
+        <div class="bg-cyber-dark/80 border border-cyber-border rounded-xl p-4 sm:p-5 backdrop-blur-md cyber-clip-corner shadow-lg relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-24 h-24 bg-cyber-cyan/5 rounded-full blur-2xl pointer-events-none"></div>
+          
+          <h2 class="font-display text-xs uppercase tracking-widest text-cyber-cyan font-bold mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-network-wired"></i> PROTOCOL MODE
+          </h2>
+
+          <div class="grid grid-cols-2 lg:grid-cols-1 gap-2 text-sm font-mono">
+            <button id="modePveBtn" class="mode-select-btn active w-full py-2.5 px-3 border border-cyber-cyan bg-cyber-cyan/15 text-cyber-cyan text-left flex items-center justify-between cyber-clip-btn font-bold transition">
+              <span><i class="fa-solid fa-robot mr-2"></i>PvAI PROTOCOL</span>
+              <span class="w-2 h-2 rounded-full bg-cyber-cyan animate-pulse"></span>
+            </button>
+            <button id="modePvpBtn" class="mode-select-btn w-full py-2.5 px-3 border border-slate-700 bg-slate-900/60 text-slate-400 text-left flex items-center justify-between cyber-clip-btn font-bold hover:text-slate-200 transition">
+              <span><i class="fa-solid fa-user-group mr-2"></i>2P LOCAL NET</span>
+              <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+            </button>
+          </div>
+
+          <!-- Neural Difficulty Selector (Filtered when in PvAI mode) -->
+          <div id="aiDifficultySection" class="mt-4 pt-4 border-t border-slate-800">
+            <label class="font-display text-[11px] uppercase tracking-wider text-slate-400 font-bold block mb-2 flex items-center justify-between">
+              <span>NEURAL DIFFICULTY</span>
+              <span id="aiDiffBadge" class="text-cyber-yellow text-[10px]">MAINFRAME A.I.</span>
+            </label>
+            <div class="grid grid-cols-3 gap-1.5 text-[11px] font-mono">
+              <button data-level="easy" class="diff-btn py-2 border border-slate-700 bg-slate-900 text-slate-400 hover:text-white transition rounded text-center">ROOKIE</button>
+              <button data-level="medium" class="diff-btn py-2 border border-slate-700 bg-slate-900 text-slate-400 hover:text-white transition rounded text-center">CYBER</button>
+              <button data-level="hard" class="diff-btn active py-2 border border-cyber-pink bg-cyber-pink/20 text-cyber-pink font-bold transition rounded text-center">MAINFRAME</button>
+            </div>
+            <p id="diffDesc" class="text-[11px] font-mono text-slate-500 mt-2 italic leading-tight">
+              // Neural Minimax Engine: Zero tolerance for tactical blunders.
+            </p>
+          </div>
+        </div>
+
+        <!-- Telemetry Score Matrix & Streak Tracker -->
+        <div class="bg-cyber-dark/80 border border-cyber-border rounded-xl p-4 sm:p-5 backdrop-blur-md cyber-clip-corner shadow-lg">
+          <h2 class="font-display text-xs uppercase tracking-widest text-cyber-pink font-bold mb-3 flex items-center justify-between">
+            <span class="flex items-center gap-2"><i class="fa-solid fa-chart-simple"></i> TELEMETRY LOG</span>
+            <button id="resetScoresBtn" title="Wipe Score History" class="text-slate-500 hover:text-red-400 text-xs">
+              <i class="fa-solid fa-arrows-rotate"></i>
+            </button>
+          </h2>
+
+          <div class="grid grid-cols-3 gap-2 text-center font-mono">
+            <div class="border border-cyber-cyan/30 bg-cyber-cyan/5 p-2 rounded">
+              <div class="text-[10px] text-cyber-cyan uppercase font-bold">X WINS</div>
+              <div id="scoreX" class="text-xl sm:text-2xl font-black text-white font-display">0</div>
+            </div>
+            <div class="border border-slate-700 bg-slate-900/60 p-2 rounded">
+              <div class="text-[10px] text-slate-400 uppercase font-bold">STALEMATE</div>
+              <div id="scoreDraw" class="text-xl sm:text-2xl font-black text-slate-300 font-display">0</div>
+            </div>
+            <div class="border border-cyber-pink/30 bg-cyber-pink/5 p-2 rounded">
+              <div class="text-[10px] text-cyber-pink uppercase font-bold">O WINS</div>
+              <div id="scoreO" class="text-xl sm:text-2xl font-black text-white font-display">0</div>
+            </div>
+          </div>
+
+          <div class="mt-3 flex items-center justify-between text-xs font-mono text-slate-400 px-1 pt-2 border-t border-slate-800">
+            <span>WIN STREAK: <strong id="currentStreak" class="text-cyber-yellow">0</strong></span>
+            <span>TOTAL ROUNDS: <strong id="totalRounds" class="text-white">0</strong></span>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- CENTER COLUMN: Interactive 3x3 Combat Matrix Board -->
+      <section class="lg:col-span-6 flex flex-col items-center justify-center w-full order-1 lg:order-2">
+        
+        <!-- Live Combat Turn Status Banner -->
+        <div class="w-full max-w-md flex items-center justify-between bg-cyber-dark/90 border border-cyber-border px-4 py-3 rounded-t-xl backdrop-blur-md">
+          
+          <!-- Unit 01 (CYBER-X) Turn Badge -->
+          <div id="badgePlayerX" class="flex items-center gap-2 px-3 py-1.5 rounded border border-cyber-cyan bg-cyber-cyan/15 glow-cyan transition-all duration-300">
+            <span class="w-5 h-5 flex items-center justify-center font-display font-black text-cyber-cyan text-sm">✕</span>
+            <div>
+              <div class="text-[10px] font-mono text-slate-400 tracking-wider">UNIT 01</div>
+              <div class="font-display text-xs font-bold text-white tracking-wide">CYBER-X</div>
+            </div>
+          </div>
+
+          <!-- Dynamic Turn Action Label -->
+          <div class="text-center px-2">
+            <span id="turnLabel" class="font-mono text-xs text-cyber-yellow tracking-widest font-bold uppercase animate-pulse">
+              INITIALIZING...
+            </span>
+          </div>
+
+          <!-- Unit 02 (NEURAL-O / MAINFRAME) Turn Badge -->
+          <div id="badgePlayerO" class="flex items-center gap-2 px-3 py-1.5 rounded border border-slate-800 bg-slate-900/40 opacity-60 transition-all duration-300">
+            <div class="text-right">
+              <div class="text-[10px] font-mono text-slate-400 tracking-wider">UNIT 02</div>
+              <div id="playerOName" class="font-display text-xs font-bold text-white tracking-wide">MAINFRAME</div>
+            </div>
+            <span class="w-5 h-5 flex items-center justify-center font-display font-black text-cyber-pink text-sm">◯</span>
+          </div>
+
+        </div>
+
+        <!-- 3x3 Matrix Grid Container with Chamfered Tech Brackets -->
+        <div class="relative w-full max-w-md aspect-square bg-slate-950/80 border-x border-b border-cyber-border p-4 sm:p-6 backdrop-blur-xl rounded-b-xl shadow-2xl flex items-center justify-center">
+          
+          <!-- Decorative Corner Circuit Connectors -->
+          <div class="absolute top-2 left-2 w-3 h-3 border-t-2 border-l-2 border-cyber-cyan pointer-events-none"></div>
+          <div class="absolute top-2 right-2 w-3 h-3 border-t-2 border-r-2 border-cyber-cyan pointer-events-none"></div>
+          <div class="absolute bottom-2 left-2 w-3 h-3 border-b-2 border-l-2 border-cyber-pink pointer-events-none"></div>
+          <div class="absolute bottom-2 right-2 w-3 h-3 border-b-2 border-r-2 border-cyber-pink pointer-events-none"></div>
+
+          <!-- 
+            Winning Vector Laser Strike Line:
+            Dynamically drawn on top of the cells between the starting and ending
+            coordinates of the winning trio using computed SVG client vectors.
+          -->
+          <svg id="winningLineSvg" class="absolute inset-0 w-full h-full pointer-events-none z-30 opacity-0 transition-opacity duration-300">
+            <line id="laserLine" x1="0" y1="0" x2="0" y2="0" stroke="#00f3ff" stroke-width="6" stroke-linecap="round" filter="drop-shadow(0 0 12px #00f3ff)" />
+          </svg>
+
+          <!-- The 9 Interactive Matrix Cells -->
+          <div id="boardGrid" class="w-full h-full grid grid-cols-3 grid-rows-3 gap-2.5 sm:gap-3.5 z-10">
+            
+            <!-- Index 0 [0,0] Top-Left -->
+            <button data-index="0" class="grid-cell relative w-full h-full bg-slate-900/60 border border-slate-800 rounded-lg flex items-center justify-center transition-all duration-200 hover:border-cyber-cyan/70 hover:bg-cyber-cyan/5 focus:outline-none overflow-hidden group">
+              <span class="coord-label absolute top-1 left-1.5 text-[9px] font-mono text-slate-600 group-hover:text-cyber-cyan/60 pointer-events-none">[0,0]</span>
+              <div class="symbol-container transform scale-0 transition-transform duration-300 w-3/4 h-3/4 flex items-center justify-center"></div>
+            </button>
+            <!-- Index 1 [0,1] Top-Center -->
+            <button data-index="1" class="grid-cell relative w-full h-full bg-slate-900/60 border border-slate-800 rounded-lg flex items-center justify-center transition-all duration-200 hover:border-cyber-cyan/70 hover:bg-cyber-cyan/5 focus:outline-none overflow-hidden group">
+              <span class="coord-label absolute top-1 left-1.5 text-[9px] font-mono text-slate-600 group-hover:text-cyber-cyan/60 pointer-events-none">[0,1]</span>
+              <div class="symbol-container transform scale-0 transition-transform duration-300 w-3/4 h-3/4 flex items-center justify-center"></div>
+            </button>
+            <!-- Index 2 [0,2] Top-Right -->
+            <button data-index="2" class="grid-cell relative w-full h-full bg-slate-900/60 border border-slate-800 rounded-lg flex items-center justify-center transition-all duration-200 hover:border-cyber-cyan/70 hover:bg-cyber-cyan/5 focus:outline-none overflow-hidden group">
+              <span class="coord-label absolute top-1 left-1.5 text-[9px] font-mono text-slate-600 group-hover:text-cyber-cyan/60 pointer-events-none">[0,2]</span>
+              <div class="symbol-container transform scale-0 transition-transform duration-300 w-3/4 h-3/4 flex items-center justify-center"></div>
+            </button>
+            <!-- Index 3 [1,0] Mid-Left -->
+            <button data-index="3" class="grid-cell relative w-full h-full bg-slate-900/60 border border-slate-800 rounded-lg flex items-center justify-center transition-all duration-200 hover:border-cyber-cyan/70 hover:bg-cyber-cyan/5 focus:outline-none overflow-hidden group">
+              <span class="coord-label absolute top-1 left-1.5 text-[9px] font-mono text-slate-600 group-hover:text-cyber-cyan/60 pointer-events-none">[1,0]</span>
+              <div class="symbol-container transform scale-0 transition-transform duration-300 w-3/4 h-3/4 flex items-center justify-center"></div>
+            </button>
+            <!-- Index 4 [1,1] Center Reactor -->
+            <button data-index="4" class="grid-cell relative w-full h-full bg-slate-900/60 border border-slate-800 rounded-lg flex items-center justify-center transition-all duration-200 hover:border-cyber-cyan/70 hover:bg-cyber-cyan/5 focus:outline-none overflow-hidden group">
+              <span class="coord-label absolute top-1 left-1.5 text-[9px] font-mono text-slate-600 group-hover:text-cyber-cyan/60 pointer-events-none">[1,1]</span>
+              <div class="symbol-container transform scale-0 transition-transform duration-300 w-3/4 h-3/4 flex items-center justify-center"></div>
+            </button>
+            <!-- Index 5 [1,2] Mid-Right -->
+            <button data-index="5" class="grid-cell relative w-full h-full bg-slate-900/60 border border-slate-800 rounded-lg flex items-center justify-center transition-all duration-200 hover:border-cyber-cyan/70 hover:bg-cyber-cyan/5 focus:outline-none overflow-hidden group">
+              <span class="coord-label absolute top-1 left-1.5 text-[9px] font-mono text-slate-600 group-hover:text-cyber-cyan/60 pointer-events-none">[1,2]</span>
+              <div class="symbol-container transform scale-0 transition-transform duration-300 w-3/4 h-3/4 flex items-center justify-center"></div>
+            </button>
+            <!-- Index 6 [2,0] Bottom-Left -->
+            <button data-index="6" class="grid-cell relative w-full h-full bg-slate-900/60 border border-slate-800 rounded-lg flex items-center justify-center transition-all duration-200 hover:border-cyber-cyan/70 hover:bg-cyber-cyan/5 focus:outline-none overflow-hidden group">
+              <span class="coord-label absolute top-1 left-1.5 text-[9px] font-mono text-slate-600 group-hover:text-cyber-cyan/60 pointer-events-none">[2,0]</span>
+              <div class="symbol-container transform scale-0 transition-transform duration-300 w-3/4 h-3/4 flex items-center justify-center"></div>
+            </button>
+            <!-- Index 7 [2,1] Bottom-Center -->
+            <button data-index="7" class="grid-cell relative w-full h-full bg-slate-900/60 border border-slate-800 rounded-lg flex items-center justify-center transition-all duration-200 hover:border-cyber-cyan/70 hover:bg-cyber-cyan/5 focus:outline-none overflow-hidden group">
+              <span class="coord-label absolute top-1 left-1.5 text-[9px] font-mono text-slate-600 group-hover:text-cyber-cyan/60 pointer-events-none">[2,1]</span>
+              <div class="symbol-container transform scale-0 transition-transform duration-300 w-3/4 h-3/4 flex items-center justify-center"></div>
+            </button>
+            <!-- Index 8 [2,2] Bottom-Right -->
+            <button data-index="8" class="grid-cell relative w-full h-full bg-slate-900/60 border border-slate-800 rounded-lg flex items-center justify-center transition-all duration-200 hover:border-cyber-cyan/70 hover:bg-cyber-cyan/5 focus:outline-none overflow-hidden group">
+              <span class="coord-label absolute top-1 left-1.5 text-[9px] font-mono text-slate-600 group-hover:text-cyber-cyan/60 pointer-events-none">[2,2]</span>
+              <div class="symbol-container transform scale-0 transition-transform duration-300 w-3/4 h-3/4 flex items-center justify-center"></div>
+            </button>
+
+          </div>
+        </div>
+
+        <!-- Reboot Action Controls -->
+        <div class="w-full max-w-md mt-4 flex items-center gap-3">
+          <button id="resetBoardBtn" class="flex-grow py-3 px-4 bg-gradient-to-r from-cyber-cyan/20 to-cyber-pink/20 hover:from-cyber-cyan/30 hover:to-cyber-pink/30 border border-cyber-cyan text-white font-display font-bold text-xs uppercase tracking-widest cyber-clip-btn transition flex items-center justify-center gap-2 glow-cyan">
+            <i class="fa-solid fa-power-off text-cyber-cyan"></i>
+            REBOOT MATRIX
+          </button>
+        </div>
+
+      </section>
+
+      <!-- RIGHT COLUMN: Mainframe Terminal & Diagnostic Console Output -->
+      <aside class="lg:col-span-3 space-y-4 w-full order-3">
+        
+        <div class="bg-cyber-dark/80 border border-cyber-border rounded-xl p-4 sm:p-5 backdrop-blur-md cyber-clip-corner shadow-lg flex flex-col h-[320px] lg:h-[430px]">
+          
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <h2 class="font-mono text-xs uppercase tracking-wider text-cyber-cyan font-bold flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              MAINFRAME FEED
+            </h2>
+            <span class="font-mono text-[10px] text-slate-500">PORT 2099</span>
+          </div>
+
+          <!-- Dynamic Scrolling Telemetry Stream -->
+          <div id="terminalConsole" class="flex-grow overflow-y-auto font-mono text-[11px] space-y-2 pt-3 pr-1 text-slate-300">
+            <div class="text-cyber-cyan">// CYBER_GRID ENGINE INITIALIZED.</div>
+            <div class="text-slate-500">// Syncing neural pathway nodes...</div>
+            <div class="text-cyber-yellow">// READY FOR NETRUNNER INPUT.</div>
+          </div>
+
+          <!-- Real-Time Hardware Performance Telemetry Indicators -->
+          <div class="pt-3 border-t border-slate-800/80 mt-2 flex items-center justify-between font-mono text-[10px] text-slate-400">
+            <span>NEURAL PING: <strong id="pingDisplay" class="text-emerald-400">12ms</strong></span>
+            <span>OVERCLOCK: <strong id="clockSpeedDisplay" class="text-cyber-cyan">3.80 GHz</strong></span>
+          </div>
+
+        </div>
+
+      </aside>
+
+    </div>
+
+  </main>
+
+  <!-- Victory / Game Over Modal Display -->
+  <div id="victoryModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="relative max-w-md w-full bg-cyber-dark border-2 border-cyber-cyan p-6 sm:p-8 rounded-2xl cyber-clip-corner shadow-2xl text-center glow-cyan overflow-hidden transform scale-95 transition-transform duration-300">
+      
+      <!-- Ambient Radial Backlight Glow -->
+      <div id="modalGlow" class="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 bg-cyber-cyan/20 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- Result Icon Container -->
+      <div id="modalIconWrap" class="w-16 h-16 mx-auto mb-4 border border-cyber-cyan bg-cyber-cyan/10 rounded-full flex items-center justify-center text-3xl text-cyber-cyan">
+        <i id="modalIcon" class="fa-solid fa-trophy"></i>
+      </div>
+
+      <p id="modalSubhead" class="font-mono text-xs text-cyber-yellow uppercase tracking-widest font-bold mb-1">
+        // SYSTEM OVERRIDE DETECTED
+      </p>
+
+      <h3 id="modalTitle" class="font-display font-black text-2xl sm:text-3xl tracking-wider text-white mb-3 glitch-active">
+        CYBER-X WINS
+      </h3>
+
+      <p id="modalMessage" class="font-mono text-xs text-slate-300 mb-6 leading-relaxed">
+        Sector grid compromised. Neural matrix corrupted and purged from mainframe.
+      </p>
+
+      <div class="flex gap-3 justify-center">
+        <button id="modalPlayAgainBtn" class="flex-grow py-3 px-6 bg-cyber-cyan hover:bg-cyan-400 text-black font-display font-black text-xs uppercase tracking-widest cyber-clip-btn transition shadow-lg">
+          NEXT ROUND
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    /**
+     * ==========================================================================
+     * 1. SYNTHESIZED CYBER SOUND ENGINE (WEB AUDIO API)
+     * ==========================================================================
+     * Zero external audio files or network sound requests.
+     * Generates all sound effects dynamically using oscillators, ADSR exponential
+     * decay gain envelopes, and frequency modulation ramps.
+     */
+    class CyberAudioEngine {
+      constructor() {
+        this.ctx = null;     // AudioContext instance (lazy initialized on user interaction)
+        this.enabled = true; // Audio master toggle state
+      }
+
+      /**
+       * Lazy-initializes the AudioContext to comply with browser autoplay security policies.
+       */
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      /**
+       * Core tone synthesizer.
+       * @param {number} freq - Initial frequency in Hertz.
+       * @param {string} type - Waveform type: 'sine', 'square', 'sawtooth', 'triangle'.
+       * @param {number} duration - Tone lifetime in seconds.
+       * @param {number} gainVal - Initial amplitude level.
+       * @param {number|null} pitchEnd - Target frequency for exponential pitch modulation.
+       */
+      playTone(freq, type = 'sine', duration = 0.1, gainVal = 0.15, pitchEnd = null) {
+        if (!this.enabled) return;
+        try {
+          this.init();
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, now);
+
+          // If pitchEnd is defined, modulate frequency across the duration
+          if (pitchEnd !== null) {
+            osc.frequency.exponentialRampToValueAtTime(Math.max(pitchEnd, 10), now + duration);
+          }
+
+          // ADSR Envelope: Fast attack, exponential decay to near zero
+          gain.gain.setValueAtTime(gainVal, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+          // Connect audio graph
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(now);
+          osc.stop(now + duration);
+        } catch (e) {
+          // Safeguard against browser restrictions
+        }
+      }
+
+      /**
+       * Player X Move: High-frequency rising laser ping (sawtooth wave).
+       */
+      playMoveX() {
+        this.playTone(880, 'sawtooth', 0.12, 0.12, 1450);
+      }
+
+      /**
+       * Player O Move: Deep resonant plasma reactor bloom (triangle wave).
+       */
+      playMoveO() {
+        this.playTone(340, 'triangle', 0.16, 0.18, 180);
+      }
+
+      /**
+       * General tactile UI button feedback click.
+       */
+      playClick() {
+        this.playTone(1200, 'sine', 0.04, 0.06);
+      }
+
+      /**
+       * Victory Sequence: Rising 5-note pentatonic synthesizer arpeggio.
+       */
+      playVictory() {
+        if (!this.enabled) return;
+        const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+        notes.forEach((freq, idx) => {
+          setTimeout(() => {
+            this.playTone(freq, 'sawtooth', 0.25, 0.14);
+          }, idx * 80);
+        });
+      }
+
+      /**
+       * Defeat Sequence: Pitch-dropping downward drone.
+       */
+      playDefeat() {
+        if (!this.enabled) return;
+        this.playTone(180, 'sawtooth', 0.35, 0.18, 70);
+      }
+
+      /**
+       * Stalemate Sequence: Dual-pulse discordant square wave buzz.
+       */
+      playDraw() {
+        if (!this.enabled) return;
+        this.playTone(280, 'square', 0.15, 0.1);
+        setTimeout(() => this.playTone(210, 'square', 0.25, 0.1), 100);
+      }
+
+      /**
+       * Overclock Surge: Aggressive wide-band frequency sweep.
+       */
+      playOverclock() {
+        if (!this.enabled) return;
+        this.playTone(150, 'sawtooth', 0.4, 0.2, 950);
+      }
+    }
+
+    // Instantiate the audio synthesizer singleton
+    const sfx = new CyberAudioEngine();
+
+    /**
+     * ==========================================================================
+     * 2. INTERACTIVE CYBER BACKGROUND MATRIX CANVAS
+     * ==========================================================================
+     * Renders a glowing digital grid floor and a dynamic particle simulation
+     * of floating quantum cyber data motes with Overclock velocity modifiers.
+     */
+    const canvas = document.getElementById('bgCanvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    let particles = [];
+    const PARTICLE_COUNT = 45;
+
+    /**
+     * Resizes the canvas to fill the full viewport resolution.
+     */
+    function resizeCanvas() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+
+    /**
+     * Quantum Data Particle Entity
+     * Encapsulates coordinates, velocity vectors, alpha transparency, and neon color gamuts.
+     */
+    class DataParticle {
+      constructor() {
+        this.reset();
+      }
+
+      /**
+       * Re-spawns particle at a random screen location with randomized drift velocity.
+       */
+      reset() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.size = Math.random() * 2 + 1;
+        this.speedX = (Math.random() - 0.5) * 0.8;
+        this.speedY = (Math.random() - 0.5) * 0.8;
+        this.alpha = Math.random() * 0.7 + 0.2;
+        this.color = Math.random() > 0.5 ? '#00f3ff' : '#ff007f';
+      }
+
+      /**
+       * Updates position and applies velocity multiplier when Overclock mode is engaged.
+       */
+      update(isOverclocked) {
+        const speedMultiplier = isOverclocked ? 2.4 : 1.0;
+        this.x += this.speedX * speedMultiplier;
+        this.y += this.speedY * speedMultiplier;
+
+        // Wrap around viewport bounds
+        if (this.x < 0 || this.x > width || this.y < 0 || this.y > height) {
+          this.reset();
+        }
+      }
+
+      /**
+       * Renders the particle with glowing drop shadow.
+       */
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 8;
+        ctx.fillRect(this.x, this.y, this.size, this.size);
+        ctx.restore();
+      }
+    }
+
+    /**
+     * Initializes particle collection.
+     */
+    function initCanvas() {
+      resizeCanvas();
+      particles = [];
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push(new DataParticle());
+      }
+    }
+
+    /**
+     * Main 60FPS animation loop for canvas rendering.
+     */
+    function renderCanvas() {
+      ctx.clearRect(0, 0, width, height);
+
+      // Render perspective grid lines
+      ctx.save();
+      ctx.strokeStyle = document.body.classList.contains('overclocked') ? 'rgba(0, 243, 255, 0.12)' : 'rgba(20, 40, 77, 0.4)';
+      ctx.lineWidth = 1;
+      const gridSize = 45;
+      
+      for (let x = 0; x < width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Update and draw each particle
+      const isOverclocked = document.body.classList.contains('overclocked');
+      particles.forEach(p => {
+        p.update(isOverclocked);
+        p.draw();
+      });
+
+      requestAnimationFrame(renderCanvas);
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    initCanvas();
+    renderCanvas();
+
+    /**
+     * ==========================================================================
+     * 3. GAME STATE & MINIMAX NEURAL ARTIFICIAL INTELLIGENCE
+     * ==========================================================================
+     */
+
+    /**
+     * Complete lookup table of all 8 possible 3-in-a-row winning combinations.
+     * Rows: [0,1,2], [3,4,5], [6,7,8]
+     * Columns: [0,3,6], [1,4,7], [2,5,8]
+     * Diagonals: [0,4,8], [2,4,6]
+     */
+    const WINNING_COMBOS = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
+    ];
+
+    /**
+     * Centralized Reactive Game State Container
+     */
+    const gameState = {
+      board: Array(9).fill(null), // Current 3x3 board representation (null, 'X', or 'O')
+      currentPlayer: 'X',         // Turn tracker: 'X' starts first
+      gameActive: true,           // Flag preventing input after round completion
+      mode: 'pve',                // Game mode: 'pve' (Player vs AI) or 'pvp' (Two Netrunners)
+      aiDifficulty: 'hard',       // AI heuristics: 'easy' (Rookie), 'medium' (Cyber), 'hard' (Mainframe)
+      scores: { X: 0, O: 0, draw: 0 },
+      streak: 0,                  // Win streak counter for player X
+      totalRounds: 0,             // Total rounds elapsed
+      overclocked: false,         // System overdrive state
+      isAiThinking: false         // Lockout flag during AI processing delay
+    };
+
+    /**
+     * Appends an entry to the visual Mainframe Terminal Feed on the right panel.
+     * @param {string} message - Telemetry log string.
+     * @param {string} type - Styling category ('x', 'o', 'warn', 'success', or 'normal').
+     */
+    function logTerminal(message, type = 'normal') {
+      const consoleEl = document.getElementById('terminalConsole');
+      const time = new Date().toTimeString().split(' ')[0];
+      const line = document.createElement('div');
+      
+      if (type === 'x') {
+        line.className = 'text-cyber-cyan';
+      } else if (type === 'o') {
+        line.className = 'text-cyber-pink';
+      } else if (type === 'warn') {
+        line.className = 'text-cyber-yellow font-bold';
+      } else if (type === 'success') {
+        line.className = 'text-emerald-400 font-bold';
+      } else {
+        line.className = 'text-slate-400';
+      }
+
+      line.textContent = `[${time}] ${message}`;
+      consoleEl.appendChild(line);
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+
+    /**
+     * Generates inline SVG markup for high-tech holographic symbols:
+     * - 'X': High-intensity crossed laser shard blades with white core lines
+     * - 'O': Hexagonal reactor containment core with glowing center node
+     */
+    function getSymbolSvg(symbol) {
+      if (symbol === 'X') {
+        return `
+          <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-[0_0_12px_rgba(0,243,255,0.85)]">
+            <line x1="22" y1="22" x2="78" y2="78" stroke="#00f3ff" stroke-width="12" stroke-linecap="round" />
+            <line x1="78" y1="22" x2="22" y2="78" stroke="#00f3ff" stroke-width="12" stroke-linecap="round" />
+            <line x1="22" y1="22" x2="78" y2="78" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+            <line x1="78" y1="22" x2="22" y2="78" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+          </svg>
+        `;
+      } else {
+        return `
+          <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-[0_0_12px_rgba(255,0,127,0.85)]">
+            <polygon points="50,15 82,32 82,68 50,85 18,68 18,32" fill="none" stroke="#ff007f" stroke-width="10" stroke-linejoin="round" />
+            <polygon points="50,22 75,36 75,64 50,78 25,64 25,36" fill="none" stroke="#ffffff" stroke-width="3" stroke-linejoin="round" />
+            <circle cx="50" cy="50" r="7" fill="#fcee0a" />
+          </svg>
+        `;
+      }
+    }
+
+    /**
+     * Evaluates static board state score for Minimax:
+     * - Returns +10 if AI ('O') has won
+     * - Returns -10 if Human ('X') has won
+     * - Returns 0 if no winning line is present
+     */
+    function evaluateBoard(board) {
+      for (let combo of WINNING_COMBOS) {
+        const [a, b, c] = combo;
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+          return board[a] === 'O' ? 10 : -10;
+        }
+      }
+      return 0;
+    }
+
+    /**
+     * Checks if any unfilled cells remain on the board.
+     */
+    function isMovesLeft(board) {
+      return board.some(cell => cell === null);
+    }
+
+    /**
+     * Recursive Minimax Algorithm with Depth Weighting
+     * Explores all possible future game states.
+     * Incorporates depth penalty (+/- depth) to prefer faster wins and delayed losses.
+     */
+    function minimax(board, depth, isMax) {
+      const score = evaluateBoard(board);
+
+      if (score === 10) return score - depth;   // Fast AI win preferred
+      if (score === -10) return score + depth;  // Delayed human win preferred
+      if (!isMovesLeft(board)) return 0;        // Draw condition
+
+      if (isMax) {
+        // Maximizer turn (AI = 'O')
+        let best = -1000;
+        for (let i = 0; i < 9; i++) {
+          if (board[i] === null) {
+            board[i] = 'O';
+            best = Math.max(best, minimax(board, depth + 1, false));
+            board[i] = null;
+          }
+        }
+        return best;
+      } else {
+        // Minimizer turn (Human = 'X')
+        let best = 1000;
+        for (let i = 0; i < 9; i++) {
+          if (board[i] === null) {
+            board[i] = 'X';
+            best = Math.min(best, minimax(board, depth + 1, true));
+            board[i] = null;
+          }
+        }
+        return best;
+      }
+    }
+
+    /**
+     * Selects AI move based on chosen neural difficulty tier:
+     * - easy: Picks randomly from available cells.
+     * - medium: Checks for immediate wins/blocks, with random slip-up chance.
+     * - hard: Unbeatable optimal move chosen via full Minimax tree search.
+     */
+    function findBestMove(board, difficulty) {
+      const availableMoves = [];
+      board.forEach((val, idx) => {
+        if (val === null) availableMoves.push(idx);
+      });
+
+      // Easy Mode (Rookie Bot)
+      if (difficulty === 'easy') {
+        const randomIndex = Math.floor(Math.random() * availableMoves.length);
+        return availableMoves[randomIndex];
+      }
+
+      // Medium Mode (Cybernetic)
+      if (difficulty === 'medium') {
+        // Check for immediate winning move
+        for (let move of availableMoves) {
+          board[move] = 'O';
+          if (evaluateBoard(board) === 10) {
+            board[move] = null;
+            return move;
+          }
+          board[move] = null;
+        }
+        // Check for immediate block
+        for (let move of availableMoves) {
+          board[move] = 'X';
+          if (evaluateBoard(board) === -10) {
+            board[move] = null;
+            return move;
+          }
+          board[move] = null;
+        }
+        // 40% chance of random sub-optimal pick
+        if (Math.random() < 0.4) {
+          return availableMoves[Math.floor(Math.random() * availableMoves.length)];
+        }
+      }
+
+      // Hard Mode (Mainframe AI - Unbeatable Minimax)
+      let bestVal = -1000;
+      let bestMove = -1;
+
+      for (let i = 0; i < 9; i++) {
+        if (board[i] === null) {
+          board[i] = 'O';
+          let moveVal = minimax(board, 0, false);
+          board[i] = null;
+
+          if (moveVal > bestVal) {
+            bestMove = i;
+            bestVal = moveVal;
+          }
+        }
+      }
+
+      return bestMove !== -1 ? bestMove : availableMoves[0];
+    }
+
+    /**
+     * ==========================================================================
+     * 4. GAMEPLAY ACTIONS, RENDERING, AND LASER TRACE
+     * ==========================================================================
+     */
+
+    /**
+     * Checks if current board state contains a victory or stalemate.
+     * @returns {Object|null} Winner details ({ winner, combo }) or null.
+     */
+    function checkWinner() {
+      for (let combo of WINNING_COMBOS) {
+        const [a, b, c] = combo;
+        if (gameState.board[a] && gameState.board[a] === gameState.board[b] && gameState.board[a] === gameState.board[c]) {
+          return { winner: gameState.board[a], combo };
+        }
+      }
+      if (gameState.board.every(cell => cell !== null)) {
+        return { winner: 'draw' };
+      }
+      return null;
+    }
+
+    /**
+     * Computes screen geometry and renders animated SVG laser strike line across winning trio.
+     */
+    function drawLaserStrike(combo, winner) {
+      const lineSvg = document.getElementById('winningLineSvg');
+      const laser = document.getElementById('laserLine');
+      const cells = document.querySelectorAll('.grid-cell');
+      
+      const firstCell = cells[combo[0]].getBoundingClientRect();
+      const lastCell = cells[combo[2]].getBoundingClientRect();
+      const boardRect = document.getElementById('boardGrid').getBoundingClientRect();
+
+      // Calculate center offsets relative to parent board container
+      const x1 = firstCell.left + firstCell.width / 2 - boardRect.left;
+      const y1 = firstCell.top + firstCell.height / 2 - boardRect.top;
+      const x2 = lastCell.left + lastCell.width / 2 - boardRect.left;
+      const y2 = lastCell.top + lastCell.height / 2 - boardRect.top;
+
+      laser.setAttribute('x1', x1);
+      laser.setAttribute('y1', y1);
+      laser.setAttribute('x2', x2);
+      laser.setAttribute('y2', y2);
+
+      // Adjust laser color according to the victorious unit
+      const color = winner === 'X' ? '#00f3ff' : '#ff007f';
+      laser.setAttribute('stroke', color);
+      laser.setAttribute('filter', `drop-shadow(0 0 12px ${color})`);
+
+      lineSvg.classList.remove('opacity-0');
+    }
+
+    /**
+     * Executes a move on a designated board cell index.
+     */
+    function makeMove(index, player) {
+      if (gameState.board[index] !== null || !gameState.gameActive) return false;
+
+      // Update state and render holographic SVG into target cell
+      gameState.board[index] = player;
+      const cellBtn = document.querySelector(`.grid-cell[data-index="${index}"]`);
+      const container = cellBtn.querySelector('.symbol-container');
+      
+      container.innerHTML = getSymbolSvg(player);
+      setTimeout(() => container.classList.remove('scale-0'), 15);
+
+      // Log move coordinates
+      const row = Math.floor(index / 3);
+      const col = index % 3;
+      logTerminal(`Sector [${row},${col}] breached by ${player === 'X' ? 'CYBER-X' : 'NEURAL-O'}`, player.toLowerCase());
+
+      // Trigger synthesized audio feedback
+      if (player === 'X') {
+        sfx.playMoveX();
+      } else {
+        sfx.playMoveO();
+      }
+
+      // Check for terminal board state
+      const result = checkWinner();
+
+      if (result) {
+        handleGameOver(result);
+        return true;
+      }
+
+      // Switch turns
+      gameState.currentPlayer = gameState.currentPlayer === 'X' ? 'O' : 'X';
+      updateTurnUI();
+
+      // Trigger automated AI turn if in PvAI mode
+      if (gameState.mode === 'pve' && gameState.currentPlayer === 'O') {
+        triggerAiTurn();
+      }
+
+      return true;
+    }
+
+    /**
+     * Simulates artificial latency and triggers AI move calculation.
+     */
+    function triggerAiTurn() {
+      gameState.isAiThinking = true;
+      document.getElementById('turnLabel').textContent = 'NEURAL PROCESSING...';
+      document.getElementById('turnLabel').className = 'font-mono text-xs text-cyber-pink tracking-widest font-bold uppercase animate-pulse';
+
+      // Authentic cyberpunk calculation latency (200-450ms)
+      const latency = Math.floor(Math.random() * 250 + 200);
+      document.getElementById('pingDisplay').textContent = `${latency}ms`;
+
+      setTimeout(() => {
+        if (!gameState.gameActive) return;
+        const bestMove = findBestMove(gameState.board, gameState.aiDifficulty);
+        gameState.isAiThinking = false;
+        makeMove(bestMove, 'O');
+      }, latency);
+    }
+
+    /**
+     * Updates visual HUD badges indicating active turn.
+     */
+    function updateTurnUI() {
+      const badgeX = document.getElementById('badgePlayerX');
+      const badgeO = document.getElementById('badgePlayerO');
+      const label = document.getElementById('turnLabel');
+
+      if (gameState.currentPlayer === 'X') {
+        badgeX.className = 'flex items-center gap-2 px-3 py-1.5 rounded border border-cyber-cyan bg-cyber-cyan/15 glow-cyan transition-all duration-300';
+        badgeO.className = 'flex items-center gap-2 px-3 py-1.5 rounded border border-slate-800 bg-slate-900/40 opacity-50 transition-all duration-300';
+        label.textContent = 'AWAITING CYBER-X';
+        label.className = 'font-mono text-xs text-cyber-cyan tracking-widest font-bold uppercase';
+      } else {
+        badgeO.className = 'flex items-center gap-2 px-3 py-1.5 rounded border border-cyber-pink bg-cyber-pink/15 glow-pink transition-all duration-300';
+        badgeX.className = 'flex items-center gap-2 px-3 py-1.5 rounded border border-slate-800 bg-slate-900/40 opacity-50 transition-all duration-300';
+        label.textContent = gameState.mode === 'pve' ? 'MAINFRAME COMPUTE' : 'AWAITING NEURAL-O';
+        label.className = 'font-mono text-xs text-cyber-pink tracking-widest font-bold uppercase';
+      }
+    }
+
+    /**
+     * Resolves round end, updates telemetry score history, and presents Victory Modal.
+     */
+    function handleGameOver(result) {
+      gameState.gameActive = false;
+      gameState.totalRounds++;
+      document.getElementById('totalRounds').textContent = gameState.totalRounds;
+
+      const modal = document.getElementById('victoryModal');
+      const title = document.getElementById('modalTitle');
+      const subhead = document.getElementById('modalSubhead');
+      const msg = document.getElementById('modalMessage');
+      const icon = document.getElementById('modalIcon');
+      const glow = document.getElementById('modalGlow');
+      const iconWrap = document.getElementById('modalIconWrap');
+
+      if (result.winner === 'draw') {
+        gameState.scores.draw++;
+        gameState.streak = 0;
+        document.getElementById('scoreDraw').textContent = gameState.scores.draw;
+        logTerminal('TACTICAL STALEMATE: Parity across all matrix nodes.', 'warn');
+        sfx.playDraw();
+
+        title.textContent = 'STALEMATE // DRAW';
+        subhead.textContent = '// PROTOCOL DEADLOCK';
+        msg.textContent = 'Neither operative could breach defense shields. The matrix resets in balance.';
+        icon.className = 'fa-solid fa-handshake-slash';
+        iconWrap.className = 'w-16 h-16 mx-auto mb-4 border border-slate-500 bg-slate-800/60 rounded-full flex items-center justify-center text-3xl text-slate-300';
+        glow.className = 'absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 bg-slate-500/20 rounded-full blur-3xl pointer-events-none';
+      } else {
+        const isX = result.winner === 'X';
+        drawLaserStrike(result.combo, result.winner);
+
+        if (isX) {
+          gameState.scores.X++;
+          gameState.streak++;
+          document.getElementById('scoreX').textContent = gameState.scores.X;
+          logTerminal('VICTORY FOR UNIT 01 (CYBER-X). Mainframe breach successful.', 'success');
+          sfx.playVictory();
+
+          title.textContent = 'CYBER-X WINS';
+          subhead.textContent = '// SYSTEM COMPROMISED';
+          msg.textContent = 'Neural node triangulated! Laser firewall destroyed with precision strikes.';
+          icon.className = 'fa-solid fa-trophy';
+          iconWrap.className = 'w-16 h-16 mx-auto mb-4 border border-cyber-cyan bg-cyber-cyan/15 rounded-full flex items-center justify-center text-3xl text-cyber-cyan glow-cyan';
+          glow.className = 'absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 bg-cyber-cyan/30 rounded-full blur-3xl pointer-events-none';
+        } else {
+          gameState.scores.O++;
+          gameState.streak = 0;
+          document.getElementById('scoreO').textContent = gameState.scores.O;
+          logTerminal('DEFEAT: Mainframe AI suppressed the incursion.', 'o');
+          sfx.playDefeat();
+
+          title.textContent = gameState.mode === 'pve' ? 'MAINFRAME A.I. WINS' : 'NEURAL-O WINS';
+          subhead.textContent = '// HOSTILE TAKEOVER';
+          msg.textContent = 'Counter-intrusion executed flawlessly. Connection terminated by defensive protocols.';
+          icon.className = 'fa-solid fa-skull-crossbones';
+          iconWrap.className = 'w-16 h-16 mx-auto mb-4 border border-cyber-pink bg-cyber-pink/15 rounded-full flex items-center justify-center text-3xl text-cyber-pink glow-pink';
+          glow.className = 'absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 bg-cyber-pink/30 rounded-full blur-3xl pointer-events-none';
+        }
+      }
+
+      document.getElementById('currentStreak').textContent = gameState.streak;
+
+      // Reveal dialog modal after laser trace completes
+      setTimeout(() => {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }, 700);
+    }
+
+    /**
+     * Resets the board, clears symbols, and resets turn state for a new round.
+     */
+    function rebootBoard() {
+      sfx.playClick();
+      gameState.board = Array(9).fill(null);
+      gameState.currentPlayer = 'X';
+      gameState.gameActive = true;
+      gameState.isAiThinking = false;
+
+      // Reset laser strike SVG
+      document.getElementById('winningLineSvg').classList.add('opacity-0');
+
+      // Clear cell symbols with quick collapse animation
+      document.querySelectorAll('.grid-cell').forEach(cell => {
+        const container = cell.querySelector('.symbol-container');
+        container.classList.add('scale-0');
+        setTimeout(() => container.innerHTML = '', 150);
+      });
+
+      // Hide victory modal
+      const modal = document.getElementById('victoryModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+
+      updateTurnUI();
+      logTerminal('Matrix memory flushed. Starting new combat cycle.');
+    }
+
+    /**
+     * ==========================================================================
+     * 5. INTERACTIVE EVENT BINDINGS & CONTROLS
+     * ==========================================================================
+     */
+
+    // Board cell click handlers
+    document.querySelectorAll('.grid-cell').forEach(cell => {
+      cell.addEventListener('click', () => {
+        if (!gameState.gameActive || gameState.isAiThinking) return;
+        const index = parseInt(cell.getAttribute('data-index'), 10);
+        makeMove(index, gameState.currentPlayer);
+      });
+    });
+
+    // Reset controls
+    document.getElementById('resetBoardBtn').addEventListener('click', rebootBoard);
+    document.getElementById('modalPlayAgainBtn').addEventListener('click', rebootBoard);
+
+    // Protocol Mode Toggle (PvAI vs 2P Local Netrunner)
+    const modePveBtn = document.getElementById('modePveBtn');
+    const modePvpBtn = document.getElementById('modePvpBtn');
+    const aiSection = document.getElementById('aiDifficultySection');
+    const playerOName = document.getElementById('playerOName');
+
+    modePveBtn.addEventListener('click', () => {
+      sfx.playClick();
+      gameState.mode = 'pve';
+      modePveBtn.className = 'mode-select-btn active w-full py-2.5 px-3 border border-cyber-cyan bg-cyber-cyan/15 text-cyber-cyan text-left flex items-center justify-between cyber-clip-btn font-bold transition';
+      modePvpBtn.className = 'mode-select-btn w-full py-2.5 px-3 border border-slate-700 bg-slate-900/60 text-slate-400 text-left flex items-center justify-between cyber-clip-btn font-bold hover:text-slate-200 transition';
+      modePveBtn.querySelector('span:last-child').className = 'w-2 h-2 rounded-full bg-cyber-cyan animate-pulse';
+      modePvpBtn.querySelector('span:last-child').className = 'w-2 h-2 rounded-full bg-slate-600';
+      aiSection.classList.remove('hidden');
+      playerOName.textContent = 'MAINFRAME';
+      logTerminal('Switched mode to PvAI PROTOCOL.');
+      rebootBoard();
+    });
+
+    modePvpBtn.addEventListener('click', () => {
+      sfx.playClick();
+      gameState.mode = 'pvp';
+      modePvpBtn.className = 'mode-select-btn active w-full py-2.5 px-3 border border-cyber-pink bg-cyber-pink/15 text-cyber-pink text-left flex items-center justify-between cyber-clip-btn font-bold transition';
+      modePveBtn.className = 'mode-select-btn w-full py-2.5 px-3 border border-slate-700 bg-slate-900/60 text-slate-400 text-left flex items-center justify-between cyber-clip-btn font-bold hover:text-slate-200 transition';
+      modePvpBtn.querySelector('span:last-child').className = 'w-2 h-2 rounded-full bg-cyber-pink animate-pulse';
+      modePveBtn.querySelector('span:last-child').className = 'w-2 h-2 rounded-full bg-slate-600';
+      aiSection.classList.add('hidden');
+      playerOName.textContent = 'NEURAL-O';
+      logTerminal('Switched mode to 2P LOCAL NETRUNNER BATTLE.');
+      rebootBoard();
+    });
+
+    // AI Difficulty Level Selection
+    document.querySelectorAll('.diff-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        sfx.playClick();
+        document.querySelectorAll('.diff-btn').forEach(b => {
+          b.className = 'diff-btn py-2 border border-slate-700 bg-slate-900 text-slate-400 hover:text-white transition rounded text-center';
+        });
+        btn.className = 'diff-btn active py-2 border border-cyber-pink bg-cyber-pink/20 text-cyber-pink font-bold transition rounded text-center';
+
+        const diff = btn.getAttribute('data-level');
+        gameState.aiDifficulty = diff;
+
+        const badge = document.getElementById('aiDiffBadge');
+        const desc = document.getElementById('diffDesc');
+
+        if (diff === 'easy') {
+          badge.textContent = 'ROOKIE BOT';
+          badge.className = 'text-emerald-400 text-[10px]';
+          desc.textContent = '// Rookie Core: Erratic moves and low heuristic accuracy.';
+        } else if (diff === 'medium') {
+          badge.textContent = 'CYBERNETIC';
+          badge.className = 'text-cyber-yellow text-[10px]';
+          desc.textContent = '// Cyber Core: Strategic blocks with occasional human delay.';
+        } else {
+          badge.textContent = 'MAINFRAME A.I.';
+          badge.className = 'text-cyber-pink text-[10px]';
+          desc.textContent = '// Minimax Engine: Zero tolerance for tactical blunders.';
+        }
+
+        logTerminal(`Neural difficulty calibrated to: ${diff.toUpperCase()}`);
+        rebootBoard();
+      });
+    });
+
+    // Score Reset Button
+    document.getElementById('resetScoresBtn').addEventListener('click', () => {
+      sfx.playClick();
+      gameState.scores = { X: 0, O: 0, draw: 0 };
+      gameState.streak = 0;
+      gameState.totalRounds = 0;
+      document.getElementById('scoreX').textContent = '0';
+      document.getElementById('scoreO').textContent = '0';
+      document.getElementById('scoreDraw').textContent = '0';
+      document.getElementById('currentStreak').textContent = '0';
+      document.getElementById('totalRounds').textContent = '0';
+      logTerminal('Telemetry scores erased.');
+    });
+
+    // Overclock / System Overdrive Toggle
+    const overclockBtn = document.getElementById('overclockToggle');
+    const overclockStatus = document.getElementById('overclockStatus');
+    const clockDisplay = document.getElementById('clockSpeedDisplay');
+
+    overclockBtn.addEventListener('click', () => {
+      gameState.overclocked = !gameState.overclocked;
+      sfx.playOverclock();
+      if (gameState.overclocked) {
+        document.body.classList.add('overclocked');
+        overclockStatus.textContent = 'ON';
+        overclockStatus.className = 'text-cyber-pink animate-pulse font-bold';
+        clockDisplay.textContent = '5.40 GHz [OVERHEAT]';
+        clockDisplay.className = 'text-cyber-pink font-bold';
+        logTerminal('WARNING: OVERCLOCK PROTOCOL ACTIVE. Core frequency elevated.', 'warn');
+      } else {
+        document.body.classList.remove('overclocked');
+        overclockStatus.textContent = 'OFF';
+        overclockStatus.className = 'text-cyber-yellow';
+        clockDisplay.textContent = '3.80 GHz';
+        clockDisplay.className = 'text-cyber-cyan';
+        logTerminal('Overclock disabled. Thermal levels normalized.');
+      }
+    });
+
+    // CRT Phosphor Scanline Filter Toggle
+    const crtOverlay = document.getElementById('crtOverlay');
+    const scanlineBtn = document.getElementById('scanlineToggle');
+    let crtEnabled = true;
+
+    scanlineBtn.addEventListener('click', () => {
+      sfx.playClick();
+      crtEnabled = !crtEnabled;
+      crtOverlay.style.opacity = crtEnabled ? '0.85' : '0';
+      scanlineBtn.classList.toggle('text-cyber-cyan', crtEnabled);
+      scanlineBtn.classList.toggle('text-slate-600', !crtEnabled);
+      logTerminal(`CRT Scanline filter: ${crtEnabled ? 'ENABLED' : 'DISABLED'}`);
+    });
+
+    // Audio SFX Engine Toggle
+    const audioBtn = document.getElementById('audioToggle');
+    const audioIcon = document.getElementById('audioIcon');
+
+    audioBtn.addEventListener('click', () => {
+      sfx.enabled = !sfx.enabled;
+      if (sfx.enabled) {
+        sfx.playClick();
+        audioIcon.className = 'fa-solid fa-volume-high text-xs';
+        audioBtn.className = 'p-2 w-9 h-9 border border-cyber-cyan bg-cyber-cyan/10 text-cyber-cyan rounded flex items-center justify-center hover:glow-cyan transition cyber-clip-btn';
+        logTerminal('Audio synth engine initialized.');
+      } else {
+        audioIcon.className = 'fa-solid fa-volume-xmark text-xs';
+        audioBtn.className = 'p-2 w-9 h-9 border border-slate-700 bg-slate-900/60 text-slate-500 rounded flex items-center justify-center transition cyber-clip-btn';
+        logTerminal('Audio synth muted.');
+      }
+    });
+
+    // Initialize initial game view on DOM content ready
+    window.addEventListener('DOMContentLoaded', () => {
+      updateTurnUI();
+    });
+  </script>
+</body>
+</html>
